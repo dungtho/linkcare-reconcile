@@ -16,11 +16,11 @@ export async function GET(req: Request) {
   const { tokens } = await oauth2Client.getToken(code);
   oauth2Client.setCredentials(tokens);
 
-  const origin = new URL(req.url).origin;
-  const redirectUrl = `${origin}/`;
-
+  // const origin = new URL(req.url).origin;
+  // const redirectUrl = `${origin}/`;
+  // const res = NextResponse.redirect(redirectUrl);
+  const redirectUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
   const res = NextResponse.redirect(redirectUrl);
-
   res.cookies.set("google_token", tokens.access_token!, {
     httpOnly: true,
     maxAge: 24 * 60 * 60,

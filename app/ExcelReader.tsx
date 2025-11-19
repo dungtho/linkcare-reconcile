@@ -50,7 +50,12 @@ export default function ExcelReader({
             const sheetName = workbook.SheetNames[0];
             const sheet = workbook.Sheets[sheetName];
             const rows: (string | number | null)[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, });
+            console.log("rows", rows)
             const headerRow = rows[3] as string[];
+            if (!headerRow || headerRow.length < 3) {
+                alert("❌ File không đúng định dạng.\nVui lòng đảm bảo dòng 4 là tiêu đề cột (headers).");
+                return;
+            }
             console.log("headerRow", headerRow)
             type ExcelCell = string | number | null;
             const isValidBooking = (row: ExcelCell[]) =>
@@ -255,19 +260,61 @@ export default function ExcelReader({
         setCompareResult([...excelCompare, ...emailOnly]);
     };
 
+    // const exportResults = (onlyMismatch = false): void => {
+    //     if (!compareResult || compareResult.length === 0) {
+    //         alert("Chưa có kết quả để xuất. Hãy bấm So sánh trước.");
+    //         return;
+    //     }
+
+    //     const rows = onlyMismatch
+    //         ? compareResult.filter((r) => r.Status !== "Khớp")
+    //         : compareResult;
+
+    //     const wb = XLSX.utils.book_new();
+    //     const ws = XLSX.utils.json_to_sheet(rows);
+    //     XLSX.utils.book_append_sheet(wb, ws, "Kết quả đối chiếu");
+
+    //     const filename = onlyMismatch
+    //         ? "DoiChieu_KhongKhop.xlsx"
+    //         : "DoiChieu_ToanBo.xlsx";
+
+    //     XLSX.writeFile(wb, filename);
+    // };
     const exportResults = (onlyMismatch = false): void => {
         if (!compareResult || compareResult.length === 0) {
-            alert("Chưa có kết quả để xuất. Hãy bấm So sánh trước.");
+            alert("Chưa có kết quả để xuất.");
             return;
         }
 
         const rows = onlyMismatch
-            ? compareResult.filter((r) => r.Status !== "Khớp")
+            ? compareResult.filter(r => r.Status !== "Khớp")
             : compareResult;
 
+        if (rows.length === 0) {
+            alert("Không có dữ liệu để xuất.");
+            return;
+        }
+
+        const titleRows = [
+            ["BẢNG SO SÁNH TỔNG HỢP SỐ LƯỢT SỬ DỤNG ĐẶC QUYỀN"],
+            ["Tháng 10/2025"],
+            [""]
+        ];
+
+        const headers = Object.keys(rows[0]);
+
+        const dataRows = rows.map(r => Object.values(r));
+
+        const finalSheetData = [
+            ...titleRows,
+            headers,
+            ...dataRows,
+        ];
+
+        // 🔥 Export
         const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.json_to_sheet(rows);
-        XLSX.utils.book_append_sheet(wb, ws, "Kết quả đối chiếu");
+        const ws = XLSX.utils.aoa_to_sheet(finalSheetData);
+        XLSX.utils.book_append_sheet(wb, ws, "Kết quả");
 
         const filename = onlyMismatch
             ? "DoiChieu_KhongKhop.xlsx"
@@ -328,7 +375,7 @@ export default function ExcelReader({
                     </div>
 
                     <div className="mt-8 space-y-3">
-                        <div className="flex gap-3 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                        {/* <div className="flex gap-3 p-4 bg-slate-50 rounded-lg border border-slate-200">
                             <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                             <div className="text-sm text-slate-700">
                                 <p className="font-semibold mb-2">Định dạng cần thiết:</p>
@@ -339,7 +386,36 @@ export default function ExcelReader({
                                     <li>• Cần có các cột: Booking ID, CIF VCB, Ngày KH sử dụng, NCC</li>
                                 </ul>
                             </div>
+                        </div> */}
+                        <div className="mt-8 space-y-4">
+                            <div className="text-sm text-slate-700">
+                                <p className="font-semibold text-base mb-2">Định dạng cần thiết</p>
+
+                                <ul className="space-y-1 text-slate-600 leading-relaxed">
+                                    <li>• Ngày phải ở dạng <b>ngày (d hoặc dd), tháng (m hoặc mm), năm (yyyy)</b></li>
+                                    <li>• Không được lưu theo dạng <b>tháng, ngày, năm</b> vì sẽ dẫn đến sai dữ liệu</li>
+                                    <li>• Nếu là File CSV, cần <b>lưu UTF-8</b> để hỗ trợ tiếng Việt</li>
+                                    <li>• File phải có các cột: <b>Booking ID, CIF VCB, Ngày KH sử dụng, NCC</b></li>
+                                </ul>
+
+                                {/* Cảnh báo */}
+                                <div className="mt-4 p-4 border border-amber-300 bg-amber-50 rounded-lg text-amber-800 text-sm shadow-sm leading-relaxed">
+                                    <div className="font-semibold mb-1">⚠️ Lưu ý quan trọng về cấu trúc file Excel</div>
+                                    <ul className="space-y-1">
+                                        <li>• <b>Dòng 1:</b> Có thể là tên của file Excel(Bắt buộc nếu là file .csv)</li>
+                                        <li>• <b>Dòng 2:</b> Có thể là bảng so sánh của tháng(có thể để trống)</li>
+                                        <li>• <b>Dòng 3:</b> Có thể để trống</li>
+                                        <li>• <b>Dòng 4:</b> Phải là các tiêu đề cột (Booking ID, CIF VCB, Ngày KH sử dụng, NCC)</li>
+                                        <li>• <b>Dòng 5:</b> Có thể để trống hoặc là số thứ tự</li>
+                                    </ul>
+
+                                    <p className="mt-2">
+                                        Nếu đúng cấu trúc trên, hệ thống sẽ đọc dữ liệu chính xác và không bị lệch cột.
+                                    </p>
+                                </div>
+                            </div>
                         </div>
+
                     </div>
 
                     {invalidDates.length > 0 && (
@@ -473,7 +549,6 @@ export default function ExcelReader({
                         <h2 className="text-xl font-semibold text-slate-900 mb-6">
                             Kết quả đối chiếu
                         </h2>
-
                         <div className="overflow-x-auto rounded-lg border border-slate-200">
                             <table className="w-full text-sm">
                                 <thead>
@@ -500,12 +575,6 @@ export default function ExcelReader({
                                     {comparePaginated.map((r, idx) => (
                                         <tr
                                             key={idx}
-                                            className={`hover:bg-slate-50 transition ${r.Status === "Khớp"
-                                                ? "bg-green-50"
-                                                : r.Status === "Không khớp"
-                                                    ? "bg-red-50"
-                                                    : "bg-amber-50"
-                                                }`}
                                         >
                                             <td className="px-6 py-4 font-semibold text-slate-900">{r.BookingId}</td>
 
