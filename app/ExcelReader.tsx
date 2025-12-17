@@ -297,7 +297,7 @@ export default function ExcelReader({
 
         const titleRows = [
             ["BẢNG SO SÁNH TỔNG HỢP SỐ LƯỢT SỬ DỤNG ĐẶC QUYỀN"],
-            ["Tháng 10/2025"],
+            [""],
             [""]
         ];
 
